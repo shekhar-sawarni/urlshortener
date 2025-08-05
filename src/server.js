@@ -12,6 +12,9 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for Render deployment (fixes rate limiter issue)
+app.set('trust proxy', 1);
+
 // Security middleware with custom CSP for web interface
 app.use(helmet({
   contentSecurityPolicy: {
@@ -63,7 +66,7 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     port: PORT,
     baseUrl: process.env.BASE_URL || 'http://localhost:3000',
-    deployment: 'Render Deployment - Updated',
+    deployment: 'Render Deployment - Fixed Rate Limiter',
   });
 });
 
