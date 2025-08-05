@@ -60,6 +60,8 @@ app.get('/health', (req, res) => {
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT,
   });
 });
 
@@ -83,6 +85,8 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     console.log('🚀 Starting URL Shortener server...');
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔧 Port: ${PORT}`);
     
     // Connect to Redis
     await connectRedis();
@@ -93,7 +97,7 @@ const startServer = async () => {
     console.log('✅ MongoDB clusters connected successfully');
 
     // Start the server with error handling
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);

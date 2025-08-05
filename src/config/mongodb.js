@@ -27,7 +27,7 @@ const connectMongoDB = async () => {
       try {
         const connection = await mongoose.createConnection(uri, {
           maxPoolSize: 10,
-          serverSelectionTimeoutMS: 10000, // Increased timeout
+          serverSelectionTimeoutMS: 10000,
           socketTimeoutMS: 45000,
           heartbeatFrequencyMS: 10000,
           retryWrites: true,
