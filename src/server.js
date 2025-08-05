@@ -19,7 +19,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrcAttr: ["'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"], // Added for inline event handlers
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'", "https:", "data:"],
@@ -62,6 +62,8 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
     port: PORT,
+    baseUrl: process.env.BASE_URL || 'http://localhost:3000',
+    deployment: 'Render Deployment - Updated',
   });
 });
 
@@ -75,6 +77,8 @@ app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Endpoint not found',
     message: 'The requested endpoint does not exist',
+    path: req.originalUrl,
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -87,14 +91,15 @@ const startServer = async () => {
     console.log('🚀 Starting URL Shortener server...');
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔧 Port: ${PORT}`);
-    
+    console.log(`🌐 Base URL: ${process.env.BASE_URL || 'http://localhost:3000'}`);
+
     // Connect to Redis
     await connectRedis();
-    console.log('✅ Redis connected successfully');
+    // console.log('✅ Redis connected successfully'); // This log is now inside connectRedis
 
     // Connect to MongoDB
     await connectMongoDB();
-    console.log('✅ MongoDB clusters connected successfully');
+    // console.log('✅ MongoDB clusters connected successfully'); // This log is now inside connectMongoDB
 
     // Start the server with error handling
     const server = app.listen(PORT, '0.0.0.0', () => {
@@ -102,6 +107,7 @@ const startServer = async () => {
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       console.log(`🌐 Web interface: http://localhost:${PORT}/`);
+      console.log(`🌍 Render URL: ${process.env.BASE_URL || 'Not set'}`);
     });
 
     // Handle server errors
@@ -118,17 +124,17 @@ const startServer = async () => {
     // Graceful shutdown
     const gracefulShutdown = async (signal) => {
       console.log(`\n${signal} received, shutting down gracefully...`);
-      
+
       server.close(async () => {
         console.log('🔌 HTTP server closed');
-        
+
         try {
           const { disconnectRedis } = require('./config/redis');
           const { disconnectMongoDB } = require('./config/mongodb');
-          
+
           await disconnectRedis();
           await disconnectMongoDB();
-          
+
           console.log('✅ Graceful shutdown completed');
           process.exit(0);
         } catch (error) {
