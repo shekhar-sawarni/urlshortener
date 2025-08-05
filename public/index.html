@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="url"], input[type="number"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="url"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .short-url {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+            user-select: all;
+        }
+
+        .short-url:hover {
+            background: #e9ecef;
+        }
+
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: background-color 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: #218838;
+        }
+
+        .copy-btn.copied {
+            background: #218838;
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .copy-message {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #28a745;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔗 URL Shortener</div>
+        <div class="subtitle">Shorten your long URLs instantly</div>
+        
+        <form id="urlForm">
+            <div class="form-group">
+                <label for="longUrl">Enter your URL:</label>
+                <input type="url" id="longUrl" name="longUrl" placeholder="https://example.com/very-long-url" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="daysToLive">Days to live (1-365):</label>
+                <input type="number" id="daysToLive" name="daysToLive" min="1" max="365" value="30" required>
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submitBtn">
+                Generate Short URL
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Generating your short URL...</p>
+        </div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('urlForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const longUrl = document.getElementById('longUrl').value;
+            const daysToLive = parseInt(document.getElementById('daysToLive').value);
+            
+            // Validate URL
+            try {
+                new URL(longUrl);
+            } catch {
+                showResult('Please enter a valid URL', 'error');
+                return;
+            }
+            
+            // Show loading
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/shorten', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        longUrl: longUrl,
+                        daysToLive: daysToLive
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const shortUrl = data.data.shortUrl;
+                    const expiresAt = new Date(data.data.expiresAt).toLocaleDateString();
+                    
+                    showResult(`
+                        <h3>✅ URL Shortened Successfully!</h3>
+                        <div class="short-url" data-url="${shortUrl}">${shortUrl}</div>
+                        <button class="copy-btn" data-url="${shortUrl}">Copy URL</button>
+                        <div class="copy-message" id="copyMessage">URL copied to clipboard!</div>
+                        <div class="stats">
+                            <strong>Original URL:</strong> ${longUrl}<br>
+                            <strong>Expires:</strong> ${expiresAt}
+                        </div>
+                    `, 'success');
+                    
+                    // Add event listeners after content is added
+                    setupEventListeners();
+                } else {
+                    showResult(`Error: ${data.message || 'Failed to shorten URL'}`, 'error');
+                }
+            } catch (error) {
+                showResult('Network error. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        function setupEventListeners() {
+            // Add click event to short URL for selection
+            const shortUrlElement = document.querySelector('.short-url');
+            if (shortUrlElement) {
+                shortUrlElement.addEventListener('click', function() {
+                    selectText(this);
+                });
+            }
+
+            // Add click event to copy button
+            const copyBtn = document.querySelector('.copy-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', function() {
+                    const url = this.getAttribute('data-url');
+                    copyToClipboard(url);
+                });
+            }
+        }
+
+        function showResult(message, type) {
+            result.innerHTML = message;
+            result.className = `result ${type}`;
+            result.style.display = 'block';
+        }
+
+        function selectText(element) {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        function copyToClipboard(text) {
+            const copyBtn = document.querySelector('.copy-btn');
+            const copyMessage = document.getElementById('copyMessage');
+            
+            // Try modern clipboard API first
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopySuccess(copyBtn, copyMessage);
+                }).catch(() => {
+                    // Fallback to older method
+                    fallbackCopyTextToClipboard(text, copyBtn, copyMessage);
+                });
+            } else {
+                // Fallback for older browsers or non-secure contexts
+                fallbackCopyTextToClipboard(text, copyBtn, copyMessage);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text, copyBtn, copyMessage) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess(copyBtn, copyMessage);
+                } else {
+                    showCopyError(copyBtn, copyMessage, text);
+                }
+            } catch (err) {
+                showCopyError(copyBtn, copyMessage, text);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        function showCopySuccess(copyBtn, copyMessage) {
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            copyBtn.classList.add('copied');
+            copyMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.classList.remove('copied');
+                copyMessage.style.display = 'none';
+            }, 2000);
+        }
+
+        function showCopyError(copyBtn, copyMessage, text) {
+            copyMessage.textContent = 'Copy failed. Please select and copy manually.';
+            copyMessage.style.color = '#dc3545';
+            copyMessage.style.display = 'block';
+            
+            // Select the text for manual copying
+            const shortUrlElement = document.querySelector('.short-url');
+            if (shortUrlElement) {
+                selectText(shortUrlElement);
+            }
+            
+            setTimeout(() => {
+                copyMessage.style.display = 'none';
+                copyMessage.style.color = '#28a745';
+            }, 3000);
+        }
+
+        // Auto-focus on URL input
+        document.getElementById('longUrl').focus();
+    </script>
+</body>
+</html> 
