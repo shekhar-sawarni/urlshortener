@@ -37,8 +37,8 @@ Add these **exact** environment variables in Render dashboard:
 NODE_ENV=production
 PORT=10000
 BASE_URL=https://your-app-name.onrender.com
-MONGODB_URI_0=mongodb+srv://SHEKHARSAWARNI:shekhar@cluster0.jutcywq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-REDIS_URL=redis://default:VzIJrdedWbGGVKKhWh9brZ72sTVV0K44@redis-19433.c12.us-east-1-4.ec2.redns.redis-cloud.com:19433
+MONGODB_URI_0=mongodb+srv://username:password@cluster0.mongodb.net/?retryWrites=true&w=majority
+REDIS_URL=redis://username:password@host:port
 RATE_LIMIT_MAX_REQUESTS=30
 RATE_LIMIT_WINDOW_MS=86400000
 SHORT_CODE_LENGTH=6
