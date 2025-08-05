@@ -1,108 +1,75 @@
-# URL Shortener Service
+# 🔗 URL Shortener Service
 
 A scalable URL shortening service built with Node.js, Express, MongoDB Atlas (sharded), and Redis caching.
 
-## Features
+## 🚀 Features
 
-- **Scalable Architecture**: MongoDB Atlas with sharded clusters based on postfix characters
-- **High Performance**: Redis caching for fast URL lookups
-- **Rate Limiting**: 30 requests per day per IP address
-- **Automatic Expiration**: URLs expire based on configurable TTL
-- **Docker Ready**: Containerized for easy deployment
-- **Serverless Ready**: Compatible with Vercel, Render, and other platforms
-- **Flexible Setup**: Start with one MongoDB cluster, add more as needed
+- **URL Shortening**: Create short URLs with custom expiration
+- **MongoDB Sharding**: Distributed across 36 clusters for scalability
+- **Redis Caching**: Fast response times with intelligent caching
+- **Rate Limiting**: Protection against abuse (30 requests/day per IP)
+- **Web Interface**: Beautiful, modern UI for URL shortening
+- **API Endpoints**: RESTful API for programmatic access
+- **Docker Ready**: Containerized deployment
+- **Serverless Ready**: Deploy on Vercel, Render, or any platform
 
-## Tech Stack
+## 🏗️ Architecture
 
-- **Backend**: Node.js, Express
-- **Database**: MongoDB Atlas (start with 1 cluster, scale to 30 for sharding)
-- **Cache**: Redis (Upstash/Redis Cloud free tier)
-- **Deployment**: Docker, Vercel, Render ready
+### Load Balancing Strategy
+- **36 MongoDB clusters** (0-9, a-z postfixes)
+- **Automatic sharding** based on URL postfix character
+- **Redis caching** for frequently accessed URLs
+- **Horizontal scaling** ready
 
-## Architecture
-
-### URL Structure
-- **Short Code**: 7 characters total
-  - **Payload**: 6 characters (Base62)
-  - **Postfix**: 1 character (0-9, a-z) - maps to MongoDB cluster
-
-### Sharding Strategy
-- Last character of short code determines MongoDB cluster
-- Start with 1 cluster, scale to 30 clusters (0-9, a-z)
-- Each cluster stores: `{ shortCode: payload, longUrl, expiresAt }`
-- **Smart Fallback**: If specific cluster unavailable, uses first available cluster
-
-### Caching Strategy
-- Redis key: `short:<fullCode>` → `longUrl`
-- TTL: `daysToLive * 86400` seconds
-- Cache-first approach for fast lookups
-
-## Quick Start
-
-### Prerequisites
-- Node.js 16+ 
-- MongoDB Atlas account (1 free cluster to start)
-- Redis account (Upstash/Redis Cloud)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd url-shortener
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Quick Setup (Recommended)**
-   ```bash
-   npm run setup
-   ```
-   This interactive wizard will help you configure your environment variables.
-
-4. **Manual Setup (Alternative)**
-   ```bash
-   cp env.example .env
-   ```
-   Then edit `.env` file with your credentials.
-
-5. **Start the server**
-   ```bash
-   npm run dev
-   ```
-
-### Environment Configuration
-
-The setup wizard will ask for:
-- **MongoDB Atlas**: Username, password, cluster URL
-- **Redis**: Host, port, password (optional)
-- **Server**: Port, base URL
-
-**Example .env file:**
-```env
-# Required: At least one MongoDB cluster
-MONGODB_URI_0=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
-
-# Redis Configuration
-REDIS_URL=redis://username:password@host:port
-
-# Server Configuration
-PORT=3000
-BASE_URL=http://localhost:3000
+### Database Design
+```
+URL Document:
+{
+  shortCode: "abc123",     // 6-char payload
+  longUrl: "https://...",  // Original URL
+  expiresAt: Date,         // TTL for automatic cleanup
+  createdAt: Date          // Creation timestamp
+}
 ```
 
-## API Documentation
+## 🚀 Quick Start
+
+### 1. Clone and Setup
+```bash
+git clone https://github.com/shekhar-sawarni/urlshortener.git
+cd urlshortener
+npm install
+```
+
+### 2. Configure Environment
+```bash
+# Interactive setup
+npm run setup
+
+# Or manually create .env file
+cp env.example .env
+# Edit .env with your credentials
+```
+
+### 3. Start Development Server
+```bash
+npm run dev
+```
+
+### 4. Access the Application
+- **Web Interface**: http://localhost:3000/
+- **Health Check**: http://localhost:3000/health
+- **API Docs**: See below
+
+## 📡 API Endpoints
 
 ### Create Short URL
-**POST** `/api/shorten`
+```bash
+POST /api/shorten
+Content-Type: application/json
 
-**Request Body:**
-```json
 {
-  "longUrl": "https://example.com/very/long/url",
+  "longUrl": "https://example.com/very-long-url",
   "daysToLive": 30
 }
 ```
@@ -112,224 +79,176 @@ BASE_URL=http://localhost:3000
 {
   "success": true,
   "data": {
-    "shortCode": "abc123x",
-    "shortUrl": "http://localhost:3000/api/abc123x",
-    "longUrl": "https://example.com/very/long/url",
-    "expiresAt": "2024-01-15T10:30:00.000Z",
-    "daysToLive": 30
+    "shortUrl": "http://localhost:3000/api/abc123u",
+    "shortCode": "abc123u",
+    "longUrl": "https://example.com/very-long-url",
+    "expiresAt": "2024-02-05T10:30:00.000Z"
   }
 }
 ```
 
 ### Redirect to Original URL
-**GET** `/api/:code`
-
-Redirects to the original URL (301 redirect)
-
-### Get URL Statistics
-**GET** `/api/stats/:code`
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "shortCode": "abc123x",
-    "longUrl": "https://example.com/very/long/url",
-    "createdAt": "2024-01-01T10:30:00.000Z",
-    "expiresAt": "2024-01-15T10:30:00.000Z",
-    "isExpired": false
-  }
-}
+```bash
+GET /api/{shortCode}
 ```
 
-### Cleanup Expired URLs
-**POST** `/api/cleanup`
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Cleaned up 5 expired URLs",
-  "removedCount": 5
-}
-```
+**Response:** 302 Redirect to original URL
 
 ### Health Check
-**GET** `/health`
+```bash
+GET /health
+```
 
 **Response:**
 ```json
 {
   "status": "OK",
-  "timestamp": "2024-01-01T10:30:00.000Z",
-  "uptime": 3600
+  "timestamp": "2024-01-05T10:30:00.000Z",
+  "uptime": 123.456,
+  "environment": "development",
+  "port": 3000
 }
 ```
 
-## Rate Limiting
+## 🔧 Configuration
 
-- **Limit**: 30 requests per day per IP
-- **Window**: 24 hours
-- **Storage**: Redis with automatic expiration
+### Environment Variables
 
-## Scaling Strategy
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `3000` |
+| `NODE_ENV` | Environment | `development` |
+| `MONGODB_URI_0` | Primary MongoDB cluster | Required |
+| `REDIS_URL` | Redis connection string | Required |
+| `BASE_URL` | Base URL for short URLs | `http://localhost:3000` |
+| `RATE_LIMIT_MAX_REQUESTS` | Max requests per day | `30` |
+| `RATE_LIMIT_WINDOW_MS` | Rate limit window | `86400000` |
+| `SHORT_CODE_LENGTH` | Short code length | `6` |
 
-### Phase 1: Single Cluster (Recommended to start)
-- Use one MongoDB Atlas free cluster
-- All short codes use the same cluster
-- Perfect for testing and small-scale usage
-
-### Phase 2: Multiple Clusters (Scale when needed)
-- Add more MongoDB Atlas clusters
-- Configure additional `MONGODB_URI_1`, `MONGODB_URI_2`, etc.
-- Automatic sharding based on postfix characters
-- Better performance and scalability
-
-## Docker Deployment
-
-### Build and Run
-```bash
-# Build image
-npm run docker:build
-
-# Run container
-npm run docker:run
-```
-
-### Docker Compose (Optional)
-```yaml
-version: '3.8'
-services:
-  url-shortener:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    healthcheck:
-      test: ["CMD", "node", "healthcheck.js"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
-
-## Serverless Deployment
-
-### Vercel
-1. Install Vercel CLI: `npm i -g vercel`
-2. Deploy: `vercel --prod`
-
-### Render
-1. Connect your GitHub repository
-2. Set environment variables in Render dashboard
-3. Deploy automatically
-
-## Environment Variables
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `PORT` | Server port | 3000 | No |
-| `NODE_ENV` | Environment | development | No |
-| `MONGODB_URI_0` | First MongoDB Atlas URI | - | **Yes** |
-| `MONGODB_URI_*` | Additional MongoDB URIs | - | No |
-| `REDIS_URL` | Redis connection URL | - | **Yes** |
-| `BASE_URL` | Base URL for short URLs | http://localhost:3000 | No |
-| `RATE_LIMIT_MAX_REQUESTS` | Daily rate limit | 30 | No |
-| `RATE_LIMIT_WINDOW_MS` | Rate limit window | 86400000 | No |
-
-## Database Setup
-
-### MongoDB Atlas (Required)
-1. Create a free MongoDB Atlas cluster
+### MongoDB Setup
+1. Create MongoDB Atlas cluster(s)
 2. Get connection string
 3. Set `MONGODB_URI_0` environment variable
-
-### Additional MongoDB Clusters (Optional)
-1. Create more free-tier clusters as needed
-2. Set `MONGODB_URI_1`, `MONGODB_URI_2`, etc.
-3. Application automatically uses available clusters
+4. For sharding, add more `MONGODB_URI_1`, `MONGODB_URI_2`, etc.
 
 ### Redis Setup
-1. Create Redis instance (Upstash/Redis Cloud)
-2. Get connection URL
+1. Create Redis Cloud instance
+2. Get connection string
 3. Set `REDIS_URL` environment variable
 
-## Monitoring and Maintenance
+## 🚀 Deployment
 
-### Health Checks
-- Endpoint: `/health`
-- Docker health check included
-- Monitors server status and uptime
+### Render (Recommended)
+```bash
+# 1. Push to GitHub
+git push origin main
 
-### Housekeeping
-- Automatic TTL cleanup via MongoDB indexes
-- Manual cleanup via `/api/cleanup` endpoint
-- Expired URLs automatically removed
+# 2. Connect to Render
+# - Go to render.com
+# - Connect your GitHub repo
+# - Set environment variables
+# - Deploy!
+```
 
-### Logging
-- Request/response logging
-- Error tracking
-- Performance monitoring
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
 
-## Security Features
+### Docker
+```bash
+# Build image
+docker build -t url-shortener .
 
-- **Input Validation**: All inputs validated and sanitized
-- **Rate Limiting**: Prevents abuse
-- **CORS**: Configurable cross-origin requests
-- **Helmet**: Security headers
-- **Error Handling**: No sensitive data in error responses
+# Run container
+docker run -p 3000:3000 --env-file .env url-shortener
+```
 
-## Performance Optimizations
+### Vercel
+```bash
+# Install Vercel CLI
+npm i -g vercel
 
-- **Redis Caching**: Fast URL lookups
-- **MongoDB Indexing**: Optimized queries
-- **Connection Pooling**: Efficient database connections
-- **Smart Sharding**: Distributed load across available clusters
+# Deploy
+vercel
+```
 
-## Troubleshooting
+## 🧪 Testing
 
-### Common Issues
-
-1. **MongoDB Connection Failed**
-   - Check connection string format
-   - Verify network access (IP whitelist)
-   - Ensure cluster is active
-
-2. **Redis Connection Failed**
-   - Verify Redis URL format
-   - Check credentials
-   - Ensure Redis instance is running
-
-3. **Rate Limit Exceeded**
-   - Wait 24 hours or use different IP
-   - Check Redis connection
-
-4. **Short Code Not Found**
-   - URL may have expired
-   - Check MongoDB cluster mapping
-   - Verify short code format
-
-### Debug Mode
-Set `NODE_ENV=development` for detailed error messages and stack traces.
-
-### Testing
 ```bash
 # Run tests
 npm test
 
-# Run with coverage
-npm test -- --coverage
+# Test specific endpoint
+curl -X POST http://localhost:3000/api/shorten \
+  -H "Content-Type: application/json" \
+  -d '{"longUrl": "https://www.google.com", "daysToLive": 30}'
 ```
 
-## Contributing
+## 📊 Monitoring
+
+### Health Checks
+- **Application**: `/health`
+- **Database**: Automatic connection monitoring
+- **Redis**: Connection status logging
+
+### Logs
+- **Development**: Console output
+- **Production**: Structured logging
+- **Errors**: Detailed error tracking
+
+## 🔒 Security
+
+- **Rate Limiting**: Prevents abuse
+- **Input Validation**: Sanitizes all inputs
+- **CORS**: Configurable cross-origin requests
+- **Helmet**: Security headers
+- **Environment Variables**: Secure credential management
+
+## 🏗️ Project Structure
+
+```
+url-shortener/
+├── src/
+│   ├── config/
+│   │   ├── mongodb.js      # MongoDB connection management
+│   │   └── redis.js        # Redis connection management
+│   ├── controllers/
+│   │   └── urlController.js # Request handlers
+│   ├── middleware/
+│   │   └── errorHandler.js  # Global error handling
+│   ├── routes/
+│   │   └── urlRoutes.js     # API route definitions
+│   ├── services/
+│   │   └── urlService.js    # Business logic
+│   ├── utils/
+│   │   └── shortCodeGenerator.js # URL generation utilities
+│   └── server.js           # Main application file
+├── public/
+│   └── index.html          # Web interface
+├── test/
+│   └── basic.test.js       # Unit tests
+├── package.json
+├── Dockerfile
+├── render.yaml
+└── README.md
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch
-3. Make changes
+2. Create a feature branch
+3. Make your changes
 4. Add tests
-5. Submit pull request
+5. Submit a pull request
 
-## License
+## 📄 License
 
-MIT License - see LICENSE file for details. 
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](https://github.com/shekhar-sawarni/urlshortener/issues)
+- **Documentation**: See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment help
+- **Configuration**: See [CONFIGURATION.md](CONFIGURATION.md) for setup help
+
+---
+
+**Built with ❤️ using Node.js, Express, MongoDB, and Redis** 
